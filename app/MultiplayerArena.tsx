@@ -22,6 +22,8 @@ export type MatchSnapshot = {
   bonusTeamId: string | null;
   kickoffActive: boolean;
   processedInputs: Record<string, number>;
+  inputs: Record<string, InputState>;
+  spawnPositions: Record<string, [number, number]>;
   serverTime: number;
   physicsHz: number;
 };
@@ -41,19 +43,53 @@ function worldFromSnapshot(snapshot: MatchSnapshot): GameWorld {
     scoreBlue: snapshot.scoreBlue,
     scoreRed: snapshot.scoreRed,
     actions: Object.fromEntries(Object.entries(snapshot.actions).map(([id, action]) => [id, { ...action }])),
-    spawnPositions: {},
+    spawnPositions: Object.fromEntries(Object.entries(snapshot.spawnPositions ?? {}).map(([id, position]) => [id, [...position] as [number, number]])),
     goalFlash: snapshot.goalFlash,
     lastGoal: snapshot.lastGoal,
     kickoffActive: snapshot.kickoffActive,
   };
 }
 
-function advancePrediction(state: PredictionState, playerId: string, input: InputState, settingsByPlayer: Record<string, PhysicsSettings>, seconds: number) {
-  state.accumulator += Math.min(.06, Math.max(0, seconds));
+function advancePrediction(state: PredictionState, inputs: Record<string, InputState>, settingsByPlayer: Record<string, PhysicsSettings>, seconds: number) {
+  state.accumulator += Math.min(.12, Math.max(0, seconds));
   while (state.accumulator >= PREDICTION_STEP) {
-    stepMultiplayerWorld(state.world, { [playerId]: input }, DEFAULT_PHYSICS, PREDICTION_STEP, settingsByPlayer);
+    stepMultiplayerWorld(state.world, inputs, DEFAULT_PHYSICS, PREDICTION_STEP, settingsByPlayer);
     state.accumulator -= PREDICTION_STEP;
   }
+}
+
+function reconcilePrediction(current: GameWorld, target: GameWorld, playerId: string) {
+  const targetById = new Map(target.discs.map((body) => [body.id, body]));
+  if (current.discs.length !== target.discs.length || current.discs.some((body) => !targetById.has(body.id))) return target;
+  for (const body of current.discs) {
+    const authoritative = targetById.get(body.id)!;
+    const dx = authoritative.x - body.x;
+    const dy = authoritative.y - body.y;
+    const distance = Math.hypot(dx, dy);
+    const isLocal = body.id === playerId;
+    const isBall = body.team === "ball";
+    const snapDistance = isLocal ? 130 : isBall ? 110 : 85;
+    if (distance > snapDistance) {
+      body.x = authoritative.x; body.y = authoritative.y;
+      body.vx = authoritative.vx; body.vy = authoritative.vy;
+      continue;
+    }
+    // O controle local recebe a menor correção visual. A bola converge um pouco
+    // mais rápido para impedir divergência sem saltar a cada pacote da internet.
+    const positionBlend = isLocal ? .06 : isBall ? .16 : .28;
+    const velocityBlend = isLocal ? .10 : isBall ? .22 : .35;
+    body.x += dx * positionBlend;
+    body.y += dy * positionBlend;
+    body.vx += (authoritative.vx - body.vx) * velocityBlend;
+    body.vy += (authoritative.vy - body.vy) * velocityBlend;
+  }
+  current.scoreBlue = target.scoreBlue;
+  current.scoreRed = target.scoreRed;
+  current.actions = target.actions;
+  current.goalFlash = target.goalFlash;
+  current.lastGoal = target.lastGoal;
+  current.kickoffActive = target.kickoffActive;
+  return current;
 }
 
 function predictedRenderWorld(state: PredictionState, playerId: string): GameWorld {
@@ -135,6 +171,7 @@ export function MultiplayerArena({
   const snapshotsRef = useRef<BufferedSnapshot[]>([]);
   const inputRef = useRef<InputState>({ ...IDLE_INPUT });
   const predictionRef = useRef<PredictionState | null>(null);
+  const serverInputsRef = useRef<Record<string, InputState>>({});
   const inputSequence = useRef(0);
   const pendingInputsRef = useRef<PendingInput[]>([]);
   const sendInputRef = useRef(onInput);
@@ -177,21 +214,28 @@ export function MultiplayerArena({
     const acknowledgedSequence = snapshot.processedInputs[playerId] ?? 0;
     inputSequence.current = Math.max(inputSequence.current, acknowledgedSequence);
     pendingInputsRef.current = pendingInputsRef.current.filter((item) => item.sequence > acknowledgedSequence);
+    serverInputsRef.current = Object.fromEntries(Object.entries(snapshot.inputs ?? {}).map(([id, input]) => [id, { ...input }]));
     playEnabledRef.current = snapshot.periodStartsInMs <= 0;
     const bonusIds = snapshot.period === "secondHalf" && snapshot.bonusTeamId
       ? snapshot.bonusTeamId === match.blueTeamId ? match.blueIds : snapshot.bonusTeamId === match.redTeamId ? match.redIds : []
       : [];
     predictionSettingsRef.current = Object.fromEntries(bonusIds.map((id) => [id, BOOSTED_PHYSICS]));
     const now = performance.now();
-    const nextPrediction: PredictionState = { world: worldFromSnapshot(snapshot), accumulator: 0, updatedAt: now, matchId: snapshot.matchId };
-    // O mundo do servidor é indivisível: jogador e bola nunca têm autoridades
-    // diferentes. A previsão apenas avança o pequeno tempo de viagem pela rede
-    // usando a mesma função e o mesmo passo fixo de 60 Hz do servidor.
-    const oneWaySeconds = Math.min(.025, Math.max(.002, (latencyRef.current ?? 4) / 2000));
+    const targetPrediction: PredictionState = { world: worldFromSnapshot(snapshot), accumulator: 0, updatedAt: now, matchId: snapshot.matchId };
+    // Projeta o snapshot até o momento atual com o último comando conhecido dos
+    // quatro jogadores. O jogador deste navegador sempre usa o comando local.
+    const oneWaySeconds = Math.min(.12, Math.max(.004, (latencyRef.current ?? 30) / 2000));
     const oldestPending = pendingInputsRef.current[0];
-    const pendingSeconds = oldestPending ? Math.min(.04, Math.max(0, (now - oldestPending.sentAt) / 1000)) : 0;
-    if (playEnabledRef.current) advancePrediction(nextPrediction, playerId, inputRef.current, predictionSettingsRef.current, Math.max(oneWaySeconds, pendingSeconds));
-    predictionRef.current = nextPrediction;
+    const pendingSeconds = oldestPending ? Math.min(.12, Math.max(0, (now - oldestPending.sentAt) / 1000)) : 0;
+    const predictionInputs = { ...serverInputsRef.current, [playerId]: { ...inputRef.current } };
+    if (playEnabledRef.current) advancePrediction(targetPrediction, predictionInputs, predictionSettingsRef.current, Math.max(oneWaySeconds, pendingSeconds));
+    const currentPrediction = predictionRef.current;
+    if (!currentPrediction || discontinuity || currentPrediction.matchId !== snapshot.matchId) {
+      predictionRef.current = targetPrediction;
+    } else {
+      currentPrediction.world = reconcilePrediction(currentPrediction.world, targetPrediction.world, playerId);
+      currentPrediction.updatedAt = now;
+    }
     const previousHud = soundSnapshotRef.current;
     if (now - hudUpdatedAtRef.current >= 100 || !previousHud || previousHud.matchId !== snapshot.matchId) {
       hudUpdatedAtRef.current = now;
@@ -249,7 +293,10 @@ export function MultiplayerArena({
         const predicted = predictionRef.current;
         const predictionElapsed = Math.min(.05, Math.max(0, (now - predicted.updatedAt) / 1000));
         predicted.updatedAt = now;
-        if (playEnabledRef.current) advancePrediction(predicted, playerId, inputRef.current, predictionSettingsRef.current, predictionElapsed);
+        if (playEnabledRef.current) {
+          const predictionInputs = { ...serverInputsRef.current, [playerId]: inputRef.current };
+          advancePrediction(predicted, predictionInputs, predictionSettingsRef.current, predictionElapsed);
+        }
         world = predictedRenderWorld(predicted, playerId);
       } else {
         const snapshots = snapshotsRef.current;

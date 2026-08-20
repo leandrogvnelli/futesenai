@@ -2,6 +2,7 @@ services:
   - type: web
     name: futesenai
     runtime: node
+    region: virginia
     plan: free
     buildCommand: npm ci && npm run build
     startCommand: npm start
@@ -13,5 +14,7 @@ services:
         value: "1"
       - key: WEB_PORT
         value: "3000"
+      - key: SNAPSHOT_HZ
+        value: "30"
       - key: PROFESSOR_KEY
         sync: false

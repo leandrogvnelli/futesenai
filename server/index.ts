@@ -17,6 +17,8 @@ const MIN_PLAYERS = 4;
 // Servidor e cliente ativo usam a mesma simulação e o mesmo passo fixo. O
 // servidor é a única autoridade sobre jogadores, bola, colisões e placar.
 const PHYSICS_HZ = 60;
+const SNAPSHOT_HZ = Math.max(20, Math.min(PHYSICS_HZ, Number(process.env.SNAPSHOT_HZ ?? 30)));
+const MAX_SOCKET_BACKLOG = 96 * 1024;
 const FAST = process.env.FAST_TRANSITIONS === "1";
 const DURATION = FAST
   ? { draw: 20, bracket: 20, countdown: 20, result: 20, answer: 35, feedback: 15, quizResult: 25, goldenAnswer: 50, goldenFeedback: 20 }
@@ -276,7 +278,7 @@ function sendSnapshots() {
   const encodedByMatch = new Map<string, string>();
   for (const [clientId, socket] of clients) {
     const match = runtimeMatchForClient(clientId);
-    if (!match || socket.readyState !== WebSocket.OPEN) continue;
+    if (!match || socket.readyState !== WebSocket.OPEN || socket.bufferedAmount > MAX_SOCKET_BACKLOG) continue;
     let encoded = encodedByMatch.get(match.bracketMatchId);
     if (!encoded) {
       encoded = JSON.stringify(snapshotPayload(match));
@@ -677,6 +679,8 @@ function snapshotPayload(match: MatchState) {
     bonusTeamId: match.bonusTeamId,
     kickoffActive: match.world.kickoffActive,
     processedInputs: match.inputSequences,
+    inputs: Object.fromEntries([...match.blueIds, ...match.redIds].map((id) => [id, match.inputs[id] ?? IDLE_INPUT])),
+    spawnPositions: match.world.spawnPositions,
     serverTime: Date.now(),
     physicsHz: PHYSICS_HZ,
   };
@@ -718,6 +722,8 @@ try { os.setPriority(0, os.constants.priority.PRIORITY_HIGH); } catch { /* prior
 
 wss.on("connection", (socket, request) => {
   let connectedClientId: string | null = null;
+  request.socket.setNoDelay(true);
+  request.socket.setKeepAlive(true, 15000);
   const forwardedProto = String(request.headers["x-forwarded-proto"] ?? "").split(",")[0].trim();
   const forwardedHost = String(request.headers["x-forwarded-host"] ?? request.headers.host ?? "").split(",")[0].trim();
   if (!detectedPublicUrl && forwardedHost) detectedPublicUrl = `${forwardedProto || (CLOUD_MODE ? "https" : "http")}://${forwardedHost}`;
@@ -920,6 +926,7 @@ wss.on("connection", (socket, request) => {
 
 const FIXED_PHYSICS_STEP = 1 / PHYSICS_HZ;
 let physicsAccumulator = 0;
+let snapshotAccumulator = 0;
 let previousPhysicsTime = performance.now();
 const physicsTimer = setInterval(() => {
   const now = performance.now();
@@ -927,9 +934,11 @@ const physicsTimer = setInterval(() => {
   previousPhysicsTime = now;
   if (!session || session.phase !== "match") {
     physicsAccumulator = 0;
+    snapshotAccumulator = 0;
     return;
   }
   physicsAccumulator += elapsed;
+  snapshotAccumulator += elapsed;
   let steps = 0;
   while (physicsAccumulator >= FIXED_PHYSICS_STEP && steps < 3) {
     for (const match of Object.values(session.matches)) {
@@ -947,11 +956,14 @@ const physicsTimer = setInterval(() => {
   }
   // O snapshot sai do mesmo relógio da física: nunca existe um estado visual
   // intermediário ou atrasado em relação ao passo que resolveu a bola.
-  if (steps > 0) sendSnapshots();
-}, 4);
+  if (steps > 0 && snapshotAccumulator >= 1 / SNAPSHOT_HZ) {
+    snapshotAccumulator %= 1 / SNAPSHOT_HZ;
+    sendSnapshots();
+  }
+}, 8);
 
 gateway.on("close", () => { clearInterval(physicsTimer); if (transitionTimer) clearTimeout(transitionTimer); });
 gateway.listen(PORT, "0.0.0.0", () => {
   console.log(`FuteSenai online em http://0.0.0.0:${PORT}`);
-  console.log(`WebSocket disponível em /ws; frontend interno na porta ${WEB_PORT}.`);
+  console.log(`WebSocket disponível em /ws; física ${PHYSICS_HZ} Hz e rede ${SNAPSHOT_HZ} Hz.`);
 });

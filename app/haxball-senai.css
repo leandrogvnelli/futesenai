@@ -1,0 +1,384 @@
+/*
+ * Tema HaxBall SENAI
+ * Estrutura visual de web game clássico: barra de 35px, painéis compactos,
+ * fonte simples, controles planos e fundo repetido. A paleta e a marca são SENAI.
+ */
+body.theme-haxball-senai {
+  --hs-bg: #91b9d2;
+  --hs-bg-dark: #82acc7;
+  --hs-panel: #183141;
+  --hs-panel-deep: #10232f;
+  --hs-panel-soft: #21475f;
+  --hs-blue: #397fae;
+  --hs-blue-hover: #4b96c8;
+  --hs-blue-light: #82c6ed;
+  --hs-orange: #f47b4d;
+  --hs-orange-dark: #c95127;
+  --hs-green: #5b9a70;
+  --hs-red: #a95155;
+  --hs-text: #f5fbff;
+  --hs-muted: #aac0cd;
+  margin: 0;
+  background-color: var(--hs-bg) !important;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.075) 0 52px, rgba(44,102,139,.05) 52px 104px) !important;
+  color: var(--hs-text);
+  font: 14px/14px Arial, Helvetica, sans-serif;
+}
+
+body.theme-haxball-senai::before,
+body.theme-haxball-senai::after {
+  position: fixed;
+  z-index: 0;
+  pointer-events: none;
+  opacity: .13;
+  filter: saturate(.65);
+}
+body.theme-haxball-senai::before { content: "⚽"; left: 4vw; bottom: 7vh; font-size: clamp(70px,10vw,150px); transform: rotate(-14deg); }
+body.theme-haxball-senai::after { content: "⚽"; right: 5vw; top: 13vh; font-size: clamp(50px,7vw,105px); transform: rotate(17deg); }
+
+.theme-haxball-senai .app-shell,
+.theme-haxball-senai .classic-page,
+.theme-haxball-senai .presentation-page,
+.theme-haxball-senai .broadcast-lobby,
+.theme-haxball-senai .training-page {
+  position: relative;
+  z-index: 1;
+  background-color: var(--hs-bg) !important;
+  background-image: repeating-linear-gradient(135deg, rgba(255,255,255,.075) 0 52px, rgba(44,102,139,.05) 52px 104px) !important;
+  color: var(--hs-text);
+  font-family: Arial, Helvetica, sans-serif !important;
+}
+.theme-haxball-senai .app-shell::before,
+.theme-haxball-senai .classic-page::before,
+.theme-haxball-senai .presentation-page::before,
+.theme-haxball-senai .broadcast-lobby::before {
+  content: "⚽";
+  position: fixed;
+  left: 4vw;
+  bottom: 6vh;
+  z-index: 0;
+  opacity: .12;
+  font-size: clamp(68px,9vw,135px);
+  pointer-events: none;
+  transform: rotate(-13deg);
+}
+.theme-haxball-senai .app-shell::after,
+.theme-haxball-senai .classic-page::after,
+.theme-haxball-senai .presentation-page::after,
+.theme-haxball-senai .broadcast-lobby::after {
+  content: "";
+  position: fixed;
+  right: 4vw;
+  top: 12vh;
+  z-index: 0;
+  width: clamp(210px,24vw,340px);
+  height: clamp(48px,6vw,78px);
+  border: 0;
+  border-radius: 0;
+  background: url("/senai-logo.png") center / contain no-repeat;
+  box-shadow: none;
+  opacity: .1;
+  pointer-events: none;
+}
+
+/* Barra superior simples e baixa, como no site clássico. */
+.theme-haxball-senai .topbar,
+.theme-haxball-senai .classic-nav,
+.theme-haxball-senai .match-header,
+.theme-haxball-senai .presentation-brand,
+.theme-haxball-senai .presentation-top,
+.theme-haxball-senai .training-header,
+.theme-haxball-senai .broadcast-header {
+  min-height: 35px !important;
+  height: 35px !important;
+  padding: 0 15px !important;
+  border: 0 !important;
+  background: #07141c !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+.theme-haxball-senai .topbar .senai-logo,
+.theme-haxball-senai .classic-nav img,
+.theme-haxball-senai .match-brand img,
+.theme-haxball-senai .presentation-brand img,
+.theme-haxball-senai .presentation-top img,
+.theme-haxball-senai .training-brand img,
+.theme-haxball-senai .broadcast-header img {
+  width: 118px !important;
+  height: 30px !important;
+  padding: 3px 6px;
+  border-radius: 2px;
+  background: #fff;
+  object-fit: contain;
+  filter: none !important;
+}
+.theme-haxball-senai .brand-lockup,
+.theme-haxball-senai .match-brand,
+.theme-haxball-senai .training-brand,
+.theme-haxball-senai .broadcast-header > div { gap: 9px !important; }
+.theme-haxball-senai .brand-divider { display: block !important; width: 1px; height: 21px; background: #39515f; }
+.theme-haxball-senai .game-name,
+.theme-haxball-senai .match-brand span,
+.theme-haxball-senai .training-brand span,
+.theme-haxball-senai .presentation-brand > span,
+.theme-haxball-senai .presentation-top > div > span,
+.theme-haxball-senai .broadcast-header strong { color: #fff !important; font-size: 14px !important; letter-spacing: 0 !important; }
+.theme-haxball-senai .game-tagline { display: none !important; }
+.theme-haxball-senai .connection-pill,
+.theme-haxball-senai .match-network,
+.theme-haxball-senai .role-badge { border: 0 !important; border-radius: 3px !important; background: #244967 !important; color: #d9edf9 !important; font-size: 9px !important; }
+.theme-haxball-senai .sound-toggle { min-width: 55px; height: 25px; padding: 3px 7px; border: 0; border-radius: 4px; background: var(--hs-blue); color: #fff; font: 700 9px Arial, sans-serif; box-shadow: none; }
+.theme-haxball-senai .sound-toggle:hover { background: var(--hs-blue-hover); }
+
+/* Janelas, formulários e botões reutilizados por todas as telas. */
+.theme-haxball-senai .setup-panel,
+.theme-haxball-senai .classic-modal,
+.theme-haxball-senai .players-panel,
+.theme-haxball-senai .room-sidebar > *,
+.theme-haxball-senai .join-stage,
+.theme-haxball-senai .tuning-panel,
+.theme-haxball-senai .match-teams-panel,
+.theme-haxball-senai .champion-summary,
+.theme-haxball-senai .education-report,
+.theme-haxball-senai .summary-content,
+.theme-haxball-senai .draw-content,
+.theme-haxball-senai .versus-stage > section {
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: var(--hs-panel) !important;
+  box-shadow: none !important;
+  color: #fff !important;
+}
+.theme-haxball-senai .panel-title-row,
+.theme-haxball-senai .players-header,
+.theme-haxball-senai .quiz-title,
+.theme-haxball-senai .report-heading { border-bottom: 3px solid var(--hs-orange) !important; }
+.theme-haxball-senai .panel-title-row h2,
+.theme-haxball-senai .classic-modal h1,
+.theme-haxball-senai .players-header,
+.theme-haxball-senai .quiz-title h1 { color: #fff !important; font-size: 20px !important; font-weight: 600 !important; letter-spacing: 0 !important; }
+.theme-haxball-senai .panel-kicker,
+.theme-haxball-senai .eyebrow,
+.theme-haxball-senai .sidebar-label,
+.theme-haxball-senai .presentation-kicker { color: var(--hs-blue-light) !important; }
+.theme-haxball-senai .step-badge { display: none !important; }
+.theme-haxball-senai .field-label { color: #fff !important; font-size: 11px !important; letter-spacing: 0 !important; text-transform: none !important; }
+.theme-haxball-senai .field-help,
+.theme-haxball-senai .capacity-label,
+.theme-haxball-senai .sidebar-card p,
+.theme-haxball-senai .join-stage p,
+.theme-haxball-senai .quiz-status { color: var(--hs-muted) !important; }
+.theme-haxball-senai .text-input,
+.theme-haxball-senai .json-input,
+.theme-haxball-senai .summary-input,
+.theme-haxball-senai .room-config-grid input {
+  border: 2px solid var(--hs-blue) !important;
+  border-radius: 5px !important;
+  outline: 0;
+  background: #0d1d27 !important;
+  color: #fff !important;
+  box-shadow: none !important;
+}
+.theme-haxball-senai .text-input:focus,
+.theme-haxball-senai .json-input:focus,
+.theme-haxball-senai .summary-input:focus { border-color: var(--hs-blue-light) !important; box-shadow: none !important; }
+.theme-haxball-senai .room-config-grid label { border: 1px solid #355266; border-radius: 3px; background: var(--hs-panel-deep); color: #d9e7ef; }
+.theme-haxball-senai .primary-button,
+.theme-haxball-senai .start-button,
+.theme-haxball-senai .text-button,
+.theme-haxball-senai .back-button,
+.theme-haxball-senai .restart-button,
+.theme-haxball-senai .prototype-controls button,
+.theme-haxball-senai .admin-console form button {
+  min-height: 25px !important;
+  padding: 5px 15px !important;
+  border: 0 !important;
+  border-radius: 5px !important;
+  background: var(--hs-blue) !important;
+  color: #fff !important;
+  box-shadow: none !important;
+  font: 700 12px/15px Arial, sans-serif !important;
+  letter-spacing: 0 !important;
+  text-transform: none !important;
+  transform: none !important;
+}
+.theme-haxball-senai .primary-button:hover,
+.theme-haxball-senai .start-button:hover,
+.theme-haxball-senai .text-button:hover,
+.theme-haxball-senai .back-button:hover { background: var(--hs-blue-hover) !important; transform: none !important; }
+
+/* Criação da sala e escolha de nickname. */
+.theme-haxball-senai .setup-layout { width: min(100% - 24px,650px); min-height: calc(100vh - 35px); margin: 0 auto; padding: 40px 0; display: flex; flex-direction: column; justify-content: center; gap: 10px; }
+.theme-haxball-senai .setup-intro { text-align: center; }
+.theme-haxball-senai .setup-intro .hero-senai-logo { width: min(430px,78vw); margin: 0 auto 18px; filter: drop-shadow(0 3px 0 rgba(0,0,0,.2)); }
+.theme-haxball-senai .setup-intro h1,
+.theme-haxball-senai .setup-intro > p,
+.theme-haxball-senai .feature-row { display: none !important; }
+.theme-haxball-senai .setup-intro .eyebrow { display: block; color: #fff !important; font-size: 12px !important; text-shadow: 1px 1px #315d78; }
+.theme-haxball-senai .setup-panel { width: min(100%,560px); max-height: calc(100vh - 60px); margin: 0 auto; padding: 10px 14px 14px !important; }
+.theme-haxball-senai .panel-title-row { margin-bottom: 10px !important; padding-bottom: 6px; }
+.theme-haxball-senai .json-input { min-height: 180px !important; }
+.theme-haxball-senai .primary-button { width: min(100%,230px); margin: 0 auto; justify-content: center; }
+.theme-haxball-senai .join-stage { width: min(100% - 24px,300px) !important; min-height: 0 !important; margin: calc(50vh - 66px) auto 0 !important; padding: 10px !important; text-align: left !important; }
+.theme-haxball-senai .join-stage .hero-senai-logo { position: absolute; width: min(395px,75vw); transform: translate(-48px,-145px); }
+.theme-haxball-senai .join-stage h1 { margin: 0 0 18px !important; padding: 6px 0 5px; border-bottom: 3px solid var(--hs-orange) !important; font-size: 20px !important; }
+.theme-haxball-senai .join-stage .ball-mark,
+.theme-haxball-senai .join-stage > .eyebrow { display: none; }
+
+/* Lobby: uma lista compacta com ações laterais. */
+.theme-haxball-senai .lobby-wrap { width: min(100% - 24px,760px) !important; margin: 8vh auto 35px !important; }
+.theme-haxball-senai .room-heading { margin-bottom: 5px !important; }
+.theme-haxball-senai .room-heading h1 { color: #fff !important; font-size: 20px !important; letter-spacing: 0 !important; }
+.theme-haxball-senai .room-code { min-width: 290px !important; padding: 6px 8px !important; border: 0 !important; border-radius: 5px !important; background: var(--hs-panel) !important; }
+.theme-haxball-senai .room-code strong { color: #a8daf6; }
+.theme-haxball-senai .lobby-grid { grid-template-columns: minmax(0,1fr) 145px !important; gap: 6px !important; }
+.theme-haxball-senai .players-panel { padding: 9px !important; }
+.theme-haxball-senai .players-header { height: 31px !important; margin-bottom: 4px !important; padding: 0 0 5px !important; }
+.theme-haxball-senai .host-spectator-row { min-height: 34px; margin: 2px 0 5px; padding: 4px 6px; border-left: 3px solid var(--hs-orange); background: var(--hs-panel-soft); }
+.theme-haxball-senai .host-spectator-row strong { color: #fff; }
+.theme-haxball-senai .player-slots { display: block !important; max-height: 510px !important; overflow-y: auto; }
+.theme-haxball-senai .player-slot { min-height: 23px !important; height: 23px; padding: 2px 4px !important; border: 0 !important; border-radius: 0 !important; background: transparent !important; color: #fff; }
+.theme-haxball-senai .player-slot:nth-child(even) { background: rgba(255,255,255,.035) !important; }
+.theme-haxball-senai .room-sidebar { gap: 5px !important; }
+.theme-haxball-senai .sidebar-card { padding: 8px !important; }
+.theme-haxball-senai .format-score strong { color: #fff; font-size: 22px !important; }
+.theme-haxball-senai .shutdown-button { border-radius: 5px; background: #733c3f; color: #ffd5d7; }
+
+/* Perguntas e resultados educacionais usam os mesmos dialogs. */
+.theme-haxball-senai .classic-modal { width: min(100% - 24px,560px); margin: 11vh auto 0; padding: 10px 14px 14px; }
+.theme-haxball-senai .quiz-question { color: #fff; font-size: 16px; }
+.theme-haxball-senai .quiz-options button { min-height: 38px; border: 2px solid var(--hs-blue); border-radius: 5px; background: var(--hs-panel-deep); color: #fff; }
+.theme-haxball-senai .quiz-options button:hover:not(:disabled),
+.theme-haxball-senai .quiz-options button.selected { background: var(--hs-panel-soft); }
+.theme-haxball-senai .quiz-options button.correct { border-color: #70bf89; background: #2f6040; }
+.theme-haxball-senai .quiz-options button.wrong { border-color: #c87579; background: #673538; }
+.theme-haxball-senai .quiz-options kbd { border-radius: 3px; background: var(--hs-blue); }
+.theme-haxball-senai .quiz-score > div { border-radius: 4px; background: var(--hs-panel-deep); }
+.theme-haxball-senai .bonus-box { background: var(--hs-blue); }
+
+/* Apresentações compactas, sem aparência de aplicativo moderno. */
+.theme-haxball-senai .presentation-page h1 { letter-spacing: 0 !important; }
+.theme-haxball-senai .summary-content,
+.theme-haxball-senai .draw-content,
+.theme-haxball-senai .versus-stage > section { width: min(760px,calc(100% - 24px)) !important; margin: 7vh auto 25px !important; padding: 10px 14px 14px !important; }
+.theme-haxball-senai .summary-content h1,
+.theme-haxball-senai .draw-content h1 { margin: 5px 0 12px !important; padding-bottom: 6px; border-bottom: 3px solid var(--hs-orange); color: #fff; font-size: clamp(20px,4vw,31px) !important; }
+.theme-haxball-senai .summary-list article { min-height: 38px !important; border: 0 !important; border-radius: 0 !important; background: var(--hs-panel-deep) !important; }
+.theme-haxball-senai .summary-list article:nth-child(even) { background: #17384b !important; }
+.theme-haxball-senai .summary-list article > span { background: var(--hs-blue); color: #fff; }
+.theme-haxball-senai .draw-stage .draw-content { background: transparent !important; }
+.theme-haxball-senai .draw-stage .draw-team-grid > article { border: 1px solid #315d78 !important; border-left: 4px solid var(--hs-blue-light) !important; border-radius: 4px; background: var(--hs-blue) !important; box-shadow: none !important; }
+.theme-haxball-senai .draw-stage .draw-team-grid p i { background: #285b79 !important; }
+.theme-haxball-senai .versus-teams article { border-radius: 5px !important; background: var(--hs-panel-deep) !important; }
+.theme-haxball-senai .result-banner { border-radius: 5px !important; background: var(--hs-blue) !important; box-shadow: none !important; }
+.theme-haxball-senai .champion-summary,
+.theme-haxball-senai .education-report { color: #fff !important; }
+.theme-haxball-senai .champion-summary h1,
+.theme-haxball-senai .champion-summary p { color: #fff !important; }
+.theme-haxball-senai .report-row:nth-child(odd) { background: rgba(255,255,255,.035); }
+
+/* Chave bilateral: formato de Copa, aparência de painel do HaxBall. */
+.theme-haxball-senai .classic-bracket-layout { display: none; }
+.theme-haxball-senai .world-cup-bracket-layout { display: block; min-height: 0; flex: 1; overflow: auto; scrollbar-color: #527f9b var(--hs-panel-deep); }
+.theme-haxball-senai .bracket-stage { background-color: var(--hs-bg) !important; }
+.theme-haxball-senai .bracket-stage .presentation-top { position: relative; z-index: 3; flex: 0 0 58px; height: 58px !important; }
+.theme-haxball-senai .bracket-stage .result-banner { min-width: 300px !important; padding: 5px 10px !important; border-left: 4px solid var(--hs-orange); text-align: left; }
+.theme-haxball-senai .bracket-stage .result-banner span { color: #ffd1bf !important; }
+.theme-haxball-senai .bracket-stage .result-banner strong { margin: 2px 0; font-size: 14px !important; }
+.theme-haxball-senai .world-bracket-shell { box-sizing: border-box; min-width: 1040px; height: calc(100vh - 62px); min-height: 570px; padding: 10px 18px 16px; display: grid; grid-template-rows: auto minmax(0,1fr); }
+.theme-haxball-senai .world-bracket-title { display: grid; justify-items: center; gap: 2px; margin-bottom: 8px; color: #fff; text-shadow: 1px 1px #315d78; }
+.theme-haxball-senai .world-bracket-title span { color: #e3f5ff; font-size: 8px; font-weight: 700; }
+.theme-haxball-senai .world-bracket-title strong { font-size: 20px; }
+.theme-haxball-senai .world-bracket-board { display: grid; grid-template-columns: minmax(360px,1fr) 185px minmax(360px,1fr); align-items: stretch; gap: 18px; min-height: 0; }
+.theme-haxball-senai .world-bracket-wing { display: grid; grid-template-columns: repeat(var(--side-rounds),minmax(165px,1fr)); align-items: stretch; gap: 12px; min-width: 0; }
+.theme-haxball-senai .world-bracket-round { display: grid; grid-template-rows: 39px minmax(0,1fr); min-width: 0; }
+.theme-haxball-senai .world-bracket-round > header { padding: 5px; border: 0; border-bottom: 3px solid var(--hs-orange); border-radius: 5px 5px 0 0; background: var(--hs-panel); color: #fff; text-align: center; }
+.theme-haxball-senai .world-bracket-round > header strong { font-size: 10px; }
+.theme-haxball-senai .world-bracket-round > header span { color: var(--hs-muted); font-size: 7px; }
+.theme-haxball-senai .world-bracket-round > div { display: grid; grid-template-rows: repeat(var(--match-count),minmax(0,1fr)); align-items: center; gap: 0; padding: 5px 0; }
+.theme-haxball-senai .world-bracket-match { position: relative; box-sizing: border-box; width: 100%; padding: 3px; border: 0; border-radius: 4px; background: var(--hs-panel); box-shadow: none; }
+.theme-haxball-senai .world-bracket-match.left::after,
+.theme-haxball-senai .world-bracket-match.right::before { content:""; position:absolute; top:50%; width:12px; height:2px; background:#527f9b; }
+.theme-haxball-senai .world-bracket-match.left::after { right:-12px; }
+.theme-haxball-senai .world-bracket-match.right::before { left:-12px; }
+.theme-haxball-senai .world-bracket-match .bracket-team { min-height: 25px !important; padding: 3px 6px !important; border: 1px solid #315975 !important; border-radius: 3px !important; background: var(--hs-blue) !important; color: #fff !important; font-size: 9px; }
+.theme-haxball-senai .world-bracket-match .bracket-team + .bracket-team { margin-top: 2px; }
+.theme-haxball-senai .world-bracket-match .bracket-team.winner { border-color: #669b74 !important; background: var(--hs-green) !important; }
+.theme-haxball-senai .world-bracket-match .bracket-team.loser { background: var(--hs-red) !important; color: #f4d7d9 !important; }
+.theme-haxball-senai .world-bracket-match > small { display: block; padding: 3px 2px 0; color: var(--hs-muted); font-size: 6px; text-align: center; }
+.theme-haxball-senai .world-bracket-match.next-match { outline: 2px solid var(--hs-orange); }
+.theme-haxball-senai .world-bracket-final { align-self: center; display: grid; gap: 8px; padding: 13px 7px 10px; border: 0; border-top: 4px solid var(--hs-orange); border-radius: 5px; background: var(--hs-panel); color: #fff; text-align: center; box-shadow: 0 4px 14px rgba(7,20,28,.28); }
+.theme-haxball-senai .world-bracket-final > span { color: #ffd0bd; font-size: 9px; font-weight: 700; }
+.theme-haxball-senai .world-bracket-final > i { color: var(--hs-orange); font-size: 22px; font-style: normal; }
+
+/* Central de partidas e seletor flutuante. */
+.theme-haxball-senai .broadcast-lobby { min-height: 100vh; }
+.theme-haxball-senai .broadcast-header { display: flex; align-items: center; justify-content: space-between; }
+.theme-haxball-senai .broadcast-header > div { display: flex; align-items: center; }
+.theme-haxball-senai .broadcast-header > span { color: var(--hs-muted); font-size: 11px; }
+.theme-haxball-senai .broadcast-content { width: min(650px,calc(100% - 24px)); margin: 5vh auto 0; padding: 10px; border-radius: 5px; background: var(--hs-panel); }
+.theme-haxball-senai .broadcast-heading { margin: 0 0 10px; padding-bottom: 7px; border-bottom: 3px solid var(--hs-orange); }
+.theme-haxball-senai .broadcast-heading > span { color: var(--hs-blue-light); font-size: 8px; font-weight: 700; }
+.theme-haxball-senai .broadcast-heading h1 { margin: 5px 0; color: #fff; font-size: 20px; letter-spacing: 0; text-transform: none; text-shadow: none; }
+.theme-haxball-senai .broadcast-heading p { margin: 0; color: var(--hs-muted); font-size: 11px; }
+.theme-haxball-senai .broadcast-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px; }
+.theme-haxball-senai .broadcast-grid button { min-height: 88px; padding: 7px; border: 1px solid #315975; border-radius: 4px; background: var(--hs-panel-deep); box-shadow: none; color: #fff; text-align: left; transform: none; }
+.theme-haxball-senai .broadcast-grid button:nth-child(n) { background: var(--hs-panel-deep); box-shadow: none; }
+.theme-haxball-senai .broadcast-grid button:hover { background: var(--hs-panel-soft); transform: none; }
+.theme-haxball-senai .broadcast-number { color: var(--hs-blue-light); font-size: 8px; }
+.theme-haxball-senai .broadcast-grid button > div { margin: 12px 0; }
+.theme-haxball-senai .broadcast-grid button strong { font-size: 10px; }
+.theme-haxball-senai .broadcast-grid button i { color: var(--hs-orange); font-size: 14px; }
+.theme-haxball-senai .broadcast-grid button em { padding: 3px 6px; border-radius: 3px; background: var(--hs-blue); color: #fff; font-size: 7px; }
+.theme-haxball-senai .watch-picker { top: 42px; right: 7px; width: min(330px,calc(100vw - 14px)); border: 0; border-radius: 5px; background: var(--hs-panel); box-shadow: 0 3px 12px rgba(0,0,0,.25); }
+.theme-haxball-senai .watch-picker > header { min-height: 31px; padding: 5px 7px; border-bottom: 3px solid var(--hs-orange); }
+.theme-haxball-senai .watch-picker button { min-height: 35px; border: 1px solid #315975; border-radius: 3px; background: var(--hs-panel-deep); }
+.theme-haxball-senai .watch-picker button:hover,
+.theme-haxball-senai .watch-picker button.selected { background: var(--hs-blue); }
+.theme-haxball-senai .watch-picker-back { width: auto !important; min-height: 23px !important; display: inline-flex !important; padding: 3px 6px !important; background: var(--hs-orange-dark) !important; font-size: 8px !important; }
+
+/* A partida mantém o campo e HUD compacto já calibrados para HaxBall. */
+.theme-haxball-senai .match-page { background: #78935f !important; }
+
+/* Marca SENAI e avisos decisivos durante a partida. */
+.theme-haxball-senai .match-brand span { display: grid; gap: 1px; line-height: 1; }
+.theme-haxball-senai .match-brand span small { color: #8fb3c8; font-size: 7px; font-weight: 700; letter-spacing: .09em; }
+.theme-haxball-senai .multiplayer-field { position: relative; }
+.theme-haxball-senai .match-countdown-overlay {
+  position: absolute;
+  inset: 0 0 auto;
+  z-index: 25;
+  height: calc(100% - 145px);
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  gap: 4px;
+  pointer-events: none;
+  background: rgba(8,17,22,.28);
+  color: #fff;
+  text-align: center;
+  text-shadow: 0 3px 0 rgba(0,0,0,.72);
+}
+.theme-haxball-senai .match-countdown-overlay small { padding: 5px 10px; border-radius: 3px; background: rgba(16,35,47,.9); color: #dff3ff; font-size: 11px; font-weight: 900; letter-spacing: .12em; }
+.theme-haxball-senai .match-countdown-overlay strong { font-size: clamp(64px,10vw,120px); line-height: .9; }
+.theme-haxball-senai .match-countdown-overlay span { font-size: 15px; font-weight: 700; }
+.theme-haxball-senai .match-countdown-overlay.final { background: transparent; }
+.theme-haxball-senai .match-countdown-overlay.final strong { color: #ff6a61; }
+.theme-haxball-senai .classic-score.clock-alert { background: #7b171b !important; box-shadow: 0 0 14px rgba(255,48,55,.75) !important; animation: clockUrgency .65s infinite alternate; }
+.theme-haxball-senai .classic-score.clock-alert strong { color: #fff !important; }
+@keyframes clockUrgency { from { filter: brightness(.92); } to { filter: brightness(1.2); } }
+.theme-haxball-senai .match-layout { padding-top: 49px !important; }
+.theme-haxball-senai .match-controls { background: rgba(21,43,37,.9) !important; }
+.theme-haxball-senai .classic-score { background: #10191f; }
+
+.theme-haxball-senai .admin-console { border-radius: 5px; background: var(--hs-panel); box-shadow: 0 8px 30px rgba(0,0,0,.4); }
+.theme-haxball-senai .admin-console header { border-bottom-color: var(--hs-orange); }
+.theme-haxball-senai .admin-console form input { border-color: var(--hs-blue); }
+.theme-haxball-senai .server-closed-page .classic-modal { text-align: center; }
+
+@media (max-width:700px) {
+  .theme-haxball-senai .lobby-grid { grid-template-columns: 1fr !important; }
+  .theme-haxball-senai .broadcast-grid { grid-template-columns: 1fr; }
+  .theme-haxball-senai .room-heading { align-items: stretch !important; flex-direction: column; }
+  .theme-haxball-senai .room-code { min-width: 0 !important; }
+}

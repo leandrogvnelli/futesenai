@@ -1,0 +1,26 @@
+{
+  "name": "futesenai",
+  "version": "0.1.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "build": "vinext build",
+    "start": "concurrently -k -s first -n WEB,GATEWAY -c blue,green \"npm:start:web\" \"npm:start:server\"",
+    "start:web": "vinext start --host 127.0.0.1 --port 3000",
+    "start:server": "node --experimental-strip-types server/index.ts"
+  },
+  "dependencies": {
+    "@vitejs/plugin-react": "6.0.2",
+    "@vitejs/plugin-rsc": "0.5.26",
+    "concurrently": "10.0.5",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "react-server-dom-webpack": "19.2.6",
+    "vinext": "1.0.0-beta.2",
+    "vite": "8.0.13",
+    "ws": "^8.21.3"
+  },
+  "type": "module"
+}

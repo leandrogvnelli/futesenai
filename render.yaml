@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: futesenai
+    runtime: node
+    plan: free
+    buildCommand: npm ci && npm run build
+    startCommand: npm start
+    healthCheckPath: /
+    envVars:
+      - key: NODE_VERSION
+        value: 24.19.0
+      - key: FUTESENAI_CLOUD
+        value: "1"
+      - key: WEB_PORT
+        value: "3000"
+      - key: PROFESSOR_KEY
+        sync: false

@@ -705,7 +705,9 @@ const gateway = createServer((request, response) => {
   });
   request.pipe(proxy);
 });
-const wss = new WebSocketServer({ noServer: true });
+// Snapshots são pequenos e frequentes. Comprimir cada mensagem aumenta CPU e
+// pode segurar pacotes no event loop do plano gratuito sem economizar o bastante.
+const wss = new WebSocketServer({ noServer: true, perMessageDeflate: false });
 
 gateway.on("upgrade", (request, socket, head) => {
   const pathname = new URL(request.url ?? "/", "http://localhost").pathname;

@@ -33,7 +33,7 @@ type Player = { id: string; nickname: string; online: boolean; isHost: boolean }
 type MatchInfo = { matchId: string; round: number; blueTeamId: string; redTeamId: string; blueIds: string[]; redIds: string[] };
 type BufferedSnapshot = MatchSnapshot & { receivedAt: number };
 type PredictionState = { world: GameWorld; accumulator: number; updatedAt: number; matchId: string };
-type PendingInput = { sequence: number; sentAt: number };
+type PendingInput = { sequence: number; sentAt: number; input: InputState };
 const BOOSTED_PHYSICS = { ...DEFAULT_PHYSICS, acceleration: DEFAULT_PHYSICS.acceleration * 1.12, maxSpeed: DEFAULT_PHYSICS.maxSpeed * 1.08, kickForce: DEFAULT_PHYSICS.kickForce * 1.15 };
 const PREDICTION_STEP = 1 / 60;
 
@@ -58,7 +58,32 @@ function advancePrediction(state: PredictionState, inputs: Record<string, InputS
   }
 }
 
-function reconcilePrediction(current: GameWorld, target: GameWorld, playerId: string) {
+function projectSnapshotToNow(
+  state: PredictionState,
+  inputs: Record<string, InputState>,
+  pendingInputs: PendingInput[],
+  playerId: string,
+  settingsByPlayer: Record<string, PhysicsSettings>,
+  seconds: number,
+  now: number,
+) {
+  const projectedInputs = { ...inputs };
+  const projectionStartedAt = now - seconds * 1000;
+  let cursor = projectionStartedAt;
+  for (const pending of pendingInputs) {
+    if (pending.sentAt <= projectionStartedAt) {
+      projectedInputs[playerId] = pending.input;
+      continue;
+    }
+    if (pending.sentAt > now) break;
+    advancePrediction(state, projectedInputs, settingsByPlayer, (pending.sentAt - cursor) / 1000);
+    projectedInputs[playerId] = pending.input;
+    cursor = pending.sentAt;
+  }
+  advancePrediction(state, projectedInputs, settingsByPlayer, (now - cursor) / 1000);
+}
+
+function reconcilePrediction(current: GameWorld, target: GameWorld, playerId: string, latencyMs: number, protectPredictedBall: boolean) {
   const targetById = new Map(target.discs.map((body) => [body.id, body]));
   if (current.discs.length !== target.discs.length || current.discs.some((body) => !targetById.has(body.id))) return target;
   for (const body of current.discs) {
@@ -68,16 +93,19 @@ function reconcilePrediction(current: GameWorld, target: GameWorld, playerId: st
     const distance = Math.hypot(dx, dy);
     const isLocal = body.id === playerId;
     const isBall = body.team === "ball";
-    const snapDistance = isLocal ? 130 : isBall ? 110 : 85;
+    const highLatency = latencyMs >= 140;
+    const deadZone = isLocal ? (highLatency ? 12 : 5) : isBall ? (protectPredictedBall ? 14 : 4) : 3;
+    const snapDistance = isLocal ? (highLatency ? 320 : 180) : isBall ? (protectPredictedBall ? 300 : 180) : 120;
     if (distance > snapDistance) {
       body.x = authoritative.x; body.y = authoritative.y;
       body.vx = authoritative.vx; body.vy = authoritative.vy;
       continue;
     }
-    // O controle local recebe a menor correção visual. A bola converge um pouco
-    // mais rápido para impedir divergência sem saltar a cada pacote da internet.
-    const positionBlend = isLocal ? .06 : isBall ? .16 : .28;
-    const velocityBlend = isLocal ? .10 : isBall ? .22 : .35;
+    // Dentro da zona morta, o snapshot não toca no disco local. Isso impede que
+    // um estado que viajou centenas de ms pela internet freie o comando atual.
+    if (distance <= deadZone) continue;
+    const positionBlend = isLocal ? (highLatency ? .018 : .045) : isBall ? (protectPredictedBall ? .025 : .10) : .38;
+    const velocityBlend = isLocal ? (highLatency ? .035 : .08) : isBall ? (protectPredictedBall ? .045 : .16) : .45;
     body.x += dx * positionBlend;
     body.y += dy * positionBlend;
     body.vx += (authoritative.vx - body.vx) * velocityBlend;
@@ -92,14 +120,29 @@ function reconcilePrediction(current: GameWorld, target: GameWorld, playerId: st
   return current;
 }
 
-function predictedRenderWorld(state: PredictionState, playerId: string): GameWorld {
+function predictedRenderWorld(state: PredictionState, remoteWorld: GameWorld | null, playerId: string): GameWorld {
+  const remoteById = new Map((remoteWorld?.discs ?? []).map((body) => [body.id, body]));
   return {
     ...state.world,
-    discs: state.world.discs.map((body) => ({
-      ...body,
-      controlled: body.id === playerId,
-    })),
+    discs: state.world.discs.map((body) => {
+      // O jogador local e a bola usam a simulação imediata deste navegador. Os
+      // demais jogadores usam snapshots interpolados, evitando engasgos visuais.
+      const source = body.id === playerId || body.team === "ball" ? body : remoteById.get(body.id) ?? body;
+      return { ...source, controlled: body.id === playerId };
+    }),
   };
+}
+
+function interpolatedRenderWorld(snapshots: BufferedSnapshot[], now: number, latencyMs: number) {
+  const latest = snapshots.at(-1);
+  if (!latest) return null;
+  // O atraso visual absorve variações de entrega. Ele não atrasa o jogador
+  // local, apenas os discos remotos que de qualquer maneira já chegam atrasados.
+  const interpolationDelay = Math.max(50, Math.min(120, 45 + latencyMs * .18));
+  const elapsedSinceLatest = Math.max(0, now - latest.receivedAt);
+  const ticksPerMillisecond = (latest.physicsHz || 60) / 1000;
+  const targetTick = Math.min(latest.tick, latest.tick - interpolationDelay * ticksPerMillisecond + elapsedSinceLatest * ticksPerMillisecond);
+  return interpolateWorld(snapshots, targetTick);
 }
 
 function interpolateWorld(snapshots: BufferedSnapshot[], targetTick: number): GameWorld | null {
@@ -174,6 +217,7 @@ export function MultiplayerArena({
   const serverInputsRef = useRef<Record<string, InputState>>({});
   const inputSequence = useRef(0);
   const pendingInputsRef = useRef<PendingInput[]>([]);
+  const ballPredictionUntilRef = useRef(0);
   const sendInputRef = useRef(onInput);
   const latencyRef = useRef(latencyMs);
   const connectedRef = useRef(connected);
@@ -224,16 +268,21 @@ export function MultiplayerArena({
     const targetPrediction: PredictionState = { world: worldFromSnapshot(snapshot), accumulator: 0, updatedAt: now, matchId: snapshot.matchId };
     // Projeta o snapshot até o momento atual com o último comando conhecido dos
     // quatro jogadores. O jogador deste navegador sempre usa o comando local.
-    const oneWaySeconds = Math.min(.12, Math.max(.004, (latencyRef.current ?? 30) / 2000));
-    const oldestPending = pendingInputsRef.current[0];
-    const pendingSeconds = oldestPending ? Math.min(.12, Math.max(0, (now - oldestPending.sentAt) / 1000)) : 0;
-    const predictionInputs = { ...serverInputsRef.current, [playerId]: { ...inputRef.current } };
-    if (playEnabledRef.current) advancePrediction(targetPrediction, predictionInputs, predictionSettingsRef.current, Math.max(oneWaySeconds, pendingSeconds));
+    const measuredLatency = latencyRef.current ?? 30;
+    const oneWaySeconds = Math.min(.30, Math.max(.004, measuredLatency / 2000));
+    const predictionInputs = { ...serverInputsRef.current };
+    if (!predictionInputs[playerId]) predictionInputs[playerId] = { ...inputRef.current };
+    if (playEnabledRef.current) {
+      // Reaplica cada mudança ainda não confirmada na ordem em que ocorreu. Em
+      // conexões altas, usar apenas a tecla atual faria curvas e freadas chegarem
+      // ao snapshot como se tivessem sido mantidas durante todo o atraso.
+      projectSnapshotToNow(targetPrediction, predictionInputs, pendingInputsRef.current, playerId, predictionSettingsRef.current, Math.min(.32, oneWaySeconds + .025), now);
+    }
     const currentPrediction = predictionRef.current;
     if (!currentPrediction || discontinuity || currentPrediction.matchId !== snapshot.matchId) {
       predictionRef.current = targetPrediction;
     } else {
-      currentPrediction.world = reconcilePrediction(currentPrediction.world, targetPrediction.world, playerId);
+      currentPrediction.world = reconcilePrediction(currentPrediction.world, targetPrediction.world, playerId, measuredLatency, now < ballPredictionUntilRef.current);
       currentPrediction.updatedAt = now;
     }
     const previousHud = soundSnapshotRef.current;
@@ -259,7 +308,7 @@ export function MultiplayerArena({
       if (!isActive || !connectedRef.current) return;
       inputSequence.current += 1;
       const sequence = inputSequence.current;
-      pendingInputsRef.current.push({ sequence, sentAt: performance.now() });
+      pendingInputsRef.current.push({ sequence, sentAt: performance.now(), input: { ...inputRef.current } });
       pendingInputsRef.current = pendingInputsRef.current.slice(-32);
       sendInputRef.current({ ...inputRef.current }, sequence);
     };
@@ -297,17 +346,16 @@ export function MultiplayerArena({
           const predictionInputs = { ...serverInputsRef.current, [playerId]: inputRef.current };
           advancePrediction(predicted, predictionInputs, predictionSettingsRef.current, predictionElapsed);
         }
-        world = predictedRenderWorld(predicted, playerId);
-      } else {
-        const snapshots = snapshotsRef.current;
-        const latest = snapshots.at(-1);
-        if (latest) {
-          const interpolationDelay = Math.max(34, Math.min(70, 34 + (latencyRef.current ?? 8) * .25));
-          const elapsedSinceLatest = Math.max(0, now - latest.receivedAt);
-          const ticksPerMillisecond = (latest.physicsHz || 60) / 1000;
-          const targetTick = Math.min(latest.tick, latest.tick - interpolationDelay * ticksPerMillisecond + elapsedSinceLatest * ticksPerMillisecond);
-          world = interpolateWorld(snapshots, targetTick);
+        const localPlayer = predicted.world.discs.find((body) => body.id === playerId);
+        const ball = predicted.world.discs.find((body) => body.team === "ball");
+        if (localPlayer && ball && Math.hypot(ball.x - localPlayer.x, ball.y - localPlayer.y) <= localPlayer.radius + ball.radius + 4) {
+          const protectionMs = Math.max(240, Math.min(520, (latencyRef.current ?? 30) * 1.35));
+          ballPredictionUntilRef.current = Math.max(ballPredictionUntilRef.current, now + protectionMs);
         }
+        const remoteWorld = interpolatedRenderWorld(snapshotsRef.current, now, latencyRef.current ?? 30);
+        world = predictedRenderWorld(predicted, remoteWorld, playerId);
+      } else {
+        world = interpolatedRenderWorld(snapshotsRef.current, now, latencyRef.current ?? 30);
       }
       if (world) drawArena(context, world, playerLabelsRef.current);
       else {
@@ -340,7 +388,7 @@ export function MultiplayerArena({
     inputRef.current = { ...IDLE_INPUT };
     inputSequence.current += 1;
     const sequence = inputSequence.current;
-    pendingInputsRef.current.push({ sequence, sentAt: performance.now() });
+    pendingInputsRef.current.push({ sequence, sentAt: performance.now(), input: { ...inputRef.current } });
     sendInputRef.current({ ...inputRef.current }, sequence);
   };
   const submitChat = (event: FormEvent) => {
@@ -357,7 +405,7 @@ export function MultiplayerArena({
         <div className="match-brand"><Image src="/senai-logo.png" alt="SENAI" width={439} height={88} priority /><span>FuteSenai <small>JOGO EDUCACIONAL</small></span></div>
         <div className="match-server-status"><span className={`status-dot ${connected ? "connected" : ""}`} /><strong>{connected ? "PARTIDA AO VIVO" : "RECONECTANDO"}</strong><small>Física sincronizada 60 Hz · servidor autoritativo</small></div>
         <div className={`role-badge ${isActive ? ownTeam : "spectator"}`}>{isActive ? `Você joga no time ${ownTeam === "blue" ? "azul" : "vermelho"}` : "Você está assistindo"}</div>
-        <div className={`match-network ${!connected ? "offline" : "good"}`}><span />{!connected ? "Reconectando" : isActive ? "0 ms controle" : latencyMs === null ? "Rede local" : `${latencyMs} ms`}</div>
+        <div className={`match-network ${!connected ? "offline" : "good"}`}><span />{!connected ? "Reconectando" : latencyMs === null ? (isActive ? "Controle local" : "Medindo rede") : isActive ? `Controle local · ${latencyMs} ms rede` : `${latencyMs} ms`}</div>
         <SoundToggle />
       </header>
 

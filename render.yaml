@@ -15,6 +15,6 @@ services:
       - key: WEB_PORT
         value: "3000"
       - key: SNAPSHOT_HZ
-        value: "30"
+        value: "24"
       - key: PROFESSOR_KEY
         sync: false
